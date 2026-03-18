@@ -1,0 +1,29 @@
+{
+  "name": "webread",
+  "version": "0.1.0",
+  "description": "Clean web page reader for AI agents and terminal users",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "webread": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts"
+  },
+  "keywords": [
+    "web",
+    "reader",
+    "cli",
+    "readability",
+    "text"
+  ],
+  "author": "Henry (henry-the-frog)",
+  "license": "MIT",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "linkedom": "^0.18.12",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
