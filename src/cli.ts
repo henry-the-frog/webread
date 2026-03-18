@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readUrl, OutputFormat } from "./reader.js";
+import { readUrl, OutputFormat, ReadOptions } from "./reader.js";
 
 const args = process.argv.slice(2);
 
@@ -9,26 +9,37 @@ if (args.includes("--help") || args.includes("-h") || args.length === 0) {
 Usage: webread <url> [options]
 
 Options:
-  --json         Output as JSON
-  --markdown     Output as Markdown (preserves headers, links, bold, etc.)
-  --limit <n>    Limit output to first n characters (with word boundary)
-  --help, -h     Show this help
+  --json             Output as JSON
+  --markdown         Output as Markdown (preserves headers, links, bold, etc.)
+  --selector <css>   Extract only elements matching this CSS selector
+  --raw              Skip Readability, convert entire page body
+  --limit <n>        Limit output to first n characters (with word boundary)
+  --help, -h         Show this help
 
 Examples:
   webread https://example.com/article
   webread https://example.com/article --markdown
-  webread https://example.com/article --limit 2000
+  webread https://example.com/article --selector "article .content"
+  webread https://example.com --raw --limit 5000
   webread url1 url2 --json`);
   process.exit(0);
 }
 
+function getArg(name: string): string | undefined {
+  const idx = args.indexOf(name);
+  return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+}
+
 const jsonFlag = args.includes("--json");
 const markdownFlag = args.includes("--markdown");
-const limitIdx = args.indexOf("--limit");
-const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : 0;
+const rawFlag = args.includes("--raw");
+const selector = getArg("--selector");
+const limitStr = getArg("--limit");
+const limit = limitStr ? parseInt(limitStr, 10) : 0;
 
-const flagArgs = new Set(["--json", "--markdown", "--limit", "--help", "-h"]);
-const urls = args.filter((a, i) => !flagArgs.has(a) && !(i > 0 && args[i - 1] === "--limit"));
+const flagArgs = new Set(["--json", "--markdown", "--raw", "--selector", "--limit", "--help", "-h"]);
+const argWithValue = new Set(["--selector", "--limit"]);
+const urls = args.filter((a, i) => !flagArgs.has(a) && !(i > 0 && argWithValue.has(args[i - 1])));
 
 if (urls.length === 0) {
   console.error("Error: No URLs provided. Run webread --help for usage.");
@@ -44,9 +55,11 @@ function truncate(text: string, maxChars: number): string {
   return (lastSpace > maxChars * 0.8 ? cut.slice(0, lastSpace) : cut) + "\n\n[... truncated]";
 }
 
+const readOpts: ReadOptions = { format, selector, raw: rawFlag };
+
 for (const url of urls) {
   try {
-    const result = await readUrl(url, format);
+    const result = await readUrl(url, readOpts);
     const content = truncate(result.content, limit);
     
     if (jsonFlag) {

@@ -1,84 +1,94 @@
 # webread
 
-A clean web page reader for AI agents and terminal users. Fetches a URL, extracts the article content using Mozilla's Readability algorithm, and returns clean text or Markdown.
+Clean web page reader for AI agents and terminal users. Fetches a URL and returns just the readable content — no ads, no nav, no clutter.
 
-## Why?
-
-AI agents and CLI users often need to read web pages but get buried in HTML, ads, and navigation. `webread` strips all of that away and gives you just the content.
+Uses Mozilla's [Readability](https://github.com/nicknisi/readability) (the same engine behind Firefox Reader View) with [linkedom](https://github.com/nicknisi/linkedom) for HTML parsing.
 
 ## Install
 
 ```bash
 npm install -g webread
+# or
+npx webread https://example.com
 ```
 
 ## Usage
 
 ```bash
-# Read a web page as clean text
+# Basic text extraction
 webread https://example.com/article
 
-# Output as Markdown (preserves headers, links, bold, etc.)
+# Markdown output (preserves headers, links, bold, lists)
 webread https://example.com/article --markdown
 
-# Limit output to first 2000 characters (word-boundary aware)
-webread https://example.com/article --limit 2000
-
-# Output as JSON (for programmatic use)
+# JSON output
 webread https://example.com/article --json
 
+# CSS selector — extract specific elements
+webread https://example.com --selector "article .content"
+webread https://news.site/page --selector "h2.headline"
+
+# Raw mode — skip Readability, get full page body
+webread https://example.com --raw
+
+# Limit output length
+webread https://example.com/article --limit 2000
+
+# Combine options
+webread https://example.com --selector "main" --markdown --limit 5000
+
 # Multiple URLs
-webread https://example.com/one https://example.com/two
+webread url1 url2 --json
 ```
 
-## Output
+## Options
 
-Default output includes a header with title, author, source, URL, and word count, followed by the article text.
-
-### Markdown mode
-
-With `--markdown`, the output preserves:
-- Headers (`#`, `##`, etc.)
-- Bold and italic
-- Links (`[text](url)`)
-- Code blocks
-- Lists
-- Blockquotes
-
-This is useful for feeding content into LLMs or note-taking systems that understand Markdown.
-
-### JSON mode
-
-With `--json`, returns a structured object:
-
-```json
-{
-  "title": "Article Title",
-  "byline": "Author Name",
-  "content": "The article text...",
-  "excerpt": "A brief summary",
-  "siteName": "Example.com",
-  "url": "https://example.com/article",
-  "wordCount": 1234
-}
-```
+| Flag | Description |
+|------|-------------|
+| `--json` | Output as JSON |
+| `--markdown` | Output as Markdown |
+| `--selector <css>` | Extract only elements matching CSS selector |
+| `--raw` | Skip Readability, convert entire page body |
+| `--limit <n>` | Limit output to first n characters |
+| `--help`, `-h` | Show help |
 
 ## API
 
 ```typescript
-import { readUrl } from "webread";
+import { readUrl, ReadOptions } from "webread";
 
+// Simple usage
+const result = await readUrl("https://example.com");
+console.log(result.title, result.content);
+
+// With options
+const result = await readUrl("https://example.com", {
+  format: "markdown",
+  selector: "article",
+  raw: false,
+});
+
+// Legacy format string still works
 const result = await readUrl("https://example.com", "markdown");
-console.log(result.content);    // Markdown text
-console.log(result.wordCount);  // 1234
 ```
 
-## How it works
+### ReadResult
 
-1. Fetches the page with a minimal User-Agent
-2. Parses HTML with [linkedom](https://github.com/WebReflection/linkedom)
-3. Extracts article content with [Mozilla Readability](https://github.com/mozilla/readability) (same algorithm as Firefox Reader View)
-4. Converts to clean text or Markdown
+```typescript
+interface ReadResult {
+  title: string;
+  byline: string | null;
+  content: string;
+  excerpt: string | null;
+  siteName: string | null;
+  url: string;
+  wordCount: number;
+}
+```
+
+## Why?
+
+AI agents and terminal tools need clean text from web pages. Existing solutions are either too heavy (headless browsers) or too simple (raw HTML stripping). webread hits the sweet spot: Mozilla's battle-tested extraction algorithm in a lightweight CLI.
 
 ## License
 

@@ -13,6 +13,12 @@ export interface ReadResult {
 
 export type OutputFormat = "text" | "markdown" | "json";
 
+export interface ReadOptions {
+  format?: OutputFormat;
+  selector?: string;
+  raw?: boolean;
+}
+
 function htmlToText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -60,10 +66,15 @@ function htmlToMarkdown(html: string): string {
     .trim();
 }
 
-export async function readUrl(url: string, format: OutputFormat = "text"): Promise<ReadResult> {
+export async function readUrl(url: string, formatOrOpts: OutputFormat | ReadOptions = "text"): Promise<ReadResult> {
+  const opts: ReadOptions = typeof formatOrOpts === "string" ? { format: formatOrOpts } : formatOrOpts;
+  const format = opts.format ?? "text";
+  const selector = opts.selector;
+  const raw = opts.raw ?? false;
+
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "webread/0.2 (https://github.com/henry-the-frog/webread)",
+      "User-Agent": "webread/0.3 (https://github.com/henry-the-frog/webread)",
       "Accept": "text/html,application/xhtml+xml",
     },
     redirect: "follow",
@@ -75,7 +86,44 @@ export async function readUrl(url: string, format: OutputFormat = "text"): Promi
 
   const html = await res.text();
   const { document } = parseHTML(html);
-  
+
+  const converter = format === "markdown" ? htmlToMarkdown : htmlToText;
+
+  // CSS selector mode: extract matching elements directly
+  if (selector) {
+    const elements = document.querySelectorAll(selector);
+    if (elements.length === 0) {
+      throw new Error(`No elements matched selector: ${selector}`);
+    }
+    const htmlParts = Array.from(elements).map((el: any) => el.innerHTML ?? el.textContent ?? "");
+    const content = converter(htmlParts.join("\n\n"));
+    return {
+      title: document.querySelector("title")?.textContent ?? "",
+      byline: null,
+      content,
+      excerpt: null,
+      siteName: null,
+      url,
+      wordCount: content.split(/\s+/).filter(Boolean).length,
+    };
+  }
+
+  // Raw mode: convert entire body without Readability
+  if (raw) {
+    const body = document.querySelector("body");
+    const content = converter(body?.innerHTML ?? html);
+    return {
+      title: document.querySelector("title")?.textContent ?? "",
+      byline: null,
+      content,
+      excerpt: null,
+      siteName: null,
+      url,
+      wordCount: content.split(/\s+/).filter(Boolean).length,
+    };
+  }
+
+  // Default: use Readability for article extraction
   const reader = new Readability(document as unknown as Document);
   const article = reader.parse();
   
@@ -83,7 +131,6 @@ export async function readUrl(url: string, format: OutputFormat = "text"): Promi
     throw new Error("Could not extract article content from page");
   }
 
-  const converter = format === "markdown" ? htmlToMarkdown : htmlToText;
   const content = converter(article.content ?? "");
 
   return {

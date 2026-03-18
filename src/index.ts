@@ -1,1 +1,1 @@
-export { readUrl, type ReadResult, type OutputFormat } from './reader.js';
+export { readUrl, ReadResult, ReadOptions, OutputFormat } from "./reader.js";
