@@ -11,7 +11,6 @@ export interface ReadResult {
 }
 
 function htmlToText(html: string): string {
-  // Simple but effective: replace block elements with newlines, strip tags
   return html
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/?(p|div|h[1-6]|li|tr|blockquote|pre|hr)[^>]*>/gi, "\n")
@@ -36,13 +35,13 @@ export async function readUrl(url: string): Promise<ReadResult> {
   });
 
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    throw new Error(`HTTP \${res.status}: \${res.statusText}`);
   }
 
   const html = await res.text();
   const { document } = parseHTML(html);
   
-  const reader = new Readability(document as any);
+  const reader = new Readability(document as unknown as Document);
   const article = reader.parse();
   
   if (!article) {
@@ -50,11 +49,11 @@ export async function readUrl(url: string): Promise<ReadResult> {
   }
 
   return {
-    title: article.title,
-    byline: article.byline,
-    content: htmlToText(article.content),
-    excerpt: article.excerpt,
-    siteName: article.siteName,
+    title: article.title ?? "",
+    byline: article.byline ?? null,
+    content: htmlToText(article.content ?? ""),
+    excerpt: article.excerpt ?? null,
+    siteName: article.siteName ?? null,
     url,
   };
 }
